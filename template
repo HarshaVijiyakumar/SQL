@@ -1,1 +1,156 @@
+import sqlite3
+import datetime
+from datetime import timedelta,date
+import threading
 
+Connection = sqlite3.connect("SQLiteTesting.db", check_same_thread=False)
+c = Connection.cursor()
+lock = threading.Lock()
+
+
+def track_TableColumns():
+    with Connection:
+        c.execute("CREATE TABLE TableColumns (TableName TEXT, Columns TEXT)")
+        print("Table successfully created")
+
+
+# remove table from the database, [pass:  table name]
+def drop_table(table):
+    with Connection:
+        connection.execute("DROP TABLE "+table)
+
+# DELETE All records in the table,[ pass: table name]
+def delete_all_data(table):
+    with Connection:
+        c.execute("DELETE FROM "+table)
+        return c.fetchall()
+
+#create table, [ pass: table name, pandas dataframe]
+def create_table(table, df):
+    print(
+        'Columns auto tagged with SQLite datatype, "float converted to REAL, Int converted to INTEGER, All other type Converted to TEXT"')
+    Column_list = {}
+    for col in list(df.columns):
+        type = ''
+        if "float" in str(df.dtypes[col]):
+            type = 'REAL'
+        elif "int" in str(df.dtypes[col]):
+            type = 'INTEGER'
+        else:
+            type = 'TEXT'
+        col_val = col.replace(" ", "")
+        Column_list[col_val] = type
+    print(Column_list)
+    print('Please recheck the column name')
+    while True:
+        print()
+        ip = input('do you want to change the any of the column datatype y/n:')
+        print("----------------------------------------------------------------")
+        if ip == 'y':
+            # -------- column name --------------
+            ChangeColumn = ''
+            ChangeColumnType = ''
+            i = 0
+            while i == 0:
+                print()
+                ChangeColumn = input("Please enter column name that you want to change:")
+                if ChangeColumn.replace(" ", "") in list(Column_list.keys()):
+                    print("Column validation is successfull, " + ChangeColumn + " column present in the dataframe")
+                    i = 1
+                else:
+                    print(
+                        "This column name is not present in the dataframe. Please check the spelling of column name. ")
+                    i = 0
+
+            # -------- column type --------------
+            j = 0
+            while j == 0:
+                print()
+                print("Enter 1 for INTEGER, 2 for REAL, 3 for TEXT, 4 for BLOB")
+                map_data_type = {1: "INTEGER", 2: "REAL", 3: "TEXT", 4: "BLOB"}
+                try:
+                    ChangeColumnType = int(input("Now please enter the datatype option number:"))
+                    j = 1
+                except:
+                    print()
+                    print("That's not an integer number.")
+                    j = 0
+            Column_list[ChangeColumn.replace(" ", "")] = map_data_type[ChangeColumnType]
+            print()
+            print(Column_list)
+            print()
+            print("-----------------------------------------------------")
+        else:
+            break
+    print()
+    print('Final Change:')
+    print(Column_list)
+    print()
+    createtable = input('do you want to change the any of the column datatype y/n:')
+    print("----------------------------------------------------------------")
+    if createtable == 'y':
+        Col_string = ''
+        for values in Column_list:
+            Col_string = Col_string + " "
+            Col_string = Col_string + values
+            Col_string = Col_string + " "
+            Col_string = Col_string + Column_list[values]
+            Col_string = Col_string + ","
+        Col_string = Col_string[:-1]
+        Col_string = Col_string[1:]
+        # print("CREATE TABLE " + Table + "(" + Col_string + ")")
+        try:
+            with Connection:
+                c.execute("CREATE TABLE "+table+"("+Col_string+")")
+                c.execute("INSERT INTO TableColumns values(?,?)",(week_year, datenum))
+                print("Table successfully created")
+        except:
+            print("Somewhere went wrong, Please re-do..")
+
+#data by id
+def get_records_by_id(table,ID):
+    #get this one from the table column tracking db data
+    header = ['ID', 'test','test','test','test']
+    d = []
+    with Connection:
+        c.execute("SELECT * FROM "+table+" WHERE ID ='" + ID + "'")
+        return c.fetchall()
+    for list_vals in c.fetchall():
+        d.append(dict(zip(header, list_vals)))
+    return json.dumps(d)
+
+#INSERT
+def insert_to_table(table,df):
+    SQL_statement = "INSERT INTO "+table+" values("
+    s1 ='' #string
+    s2 = ()# tuple
+    for col in list(df.columns):
+        pass # pass the value to the above parameters and form the SQL
+
+    for index, row in df.iterrows():
+        with Connection:
+            c.execute("INSERT INTO "+table+" values(?,?)",(row['df_column_name'], row['df_column_name']))
+
+#get all data
+def get_records_by_id(table,ID):
+    #get this one from the table column tracking db data
+    header = ['ID', 'test','test','test','test']
+    d = []
+    with Connection:
+        c.execute("SELECT * FROM "+table)
+        return c.fetchall()
+    for list_vals in c.fetchall():
+        d.append(dict(zip(header, list_vals)))
+    return json.dumps(d)
+
+# READ by date
+def get_all_data_by_date(how_many_days, table):
+    datenum = (datetime.datetime.now() - datetime.timedelta(days=int(how_many_days))).strftime('%Y%m%d') #strftime('%Y%m%d')
+    print(datenum)
+    with Connection:
+        try:
+            lock.acquire(True) # thread lock
+            c.execute("SELECT * FROM "+table+" WHERE DATENUM > "+datenum+" order by DATENUM")
+            return c.fetchall()
+        finally:
+            lock.release()
